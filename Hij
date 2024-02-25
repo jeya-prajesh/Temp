@@ -1,0 +1,29 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+
+public class CSVRowCount {
+    public static void main(String[] args) {
+        // Path to your CSV file
+        String csvFile = "your_file.csv";
+
+        try {
+            int rowCount = countRows(csvFile);
+            System.out.println("Number of rows in the CSV file: " + rowCount);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static int countRows(String csvFile) throws IOException {
+        int rowCount = 0;
+        try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
+            // Read each line and increment the row count
+            String line;
+            while ((line = reader.readLine()) != null) {
+                rowCount++;
+            }
+        }
+        return rowCount;
+    }
+}
