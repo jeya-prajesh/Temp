@@ -1,0 +1,5 @@
+<form (ngSubmit)="onSubmit()" #fileUploadForm="ngForm">
+  <input type="file" name="inputFile" (change)="onInputFileSelected($event)" accept=".txt" />
+  <input type="file" name="configFile" (change)="onConfigFileSelected($event)" accept=".csv" />
+  <button type="submit" [disabled]="!inputFile || !configFile">Upload</button>
+</form>
