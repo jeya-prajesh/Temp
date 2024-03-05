@@ -1,0 +1,53 @@
+export class FileUploadComponent {
+  inputFile: File;
+  configFile: File;
+  filesUploaded: boolean = false;
+
+  constructor(private http: HttpClient, private snackBar: MatSnackBar) { }
+
+  onInputFileSelected(event): void {
+    this.inputFile = event.target.files[0];
+    this.checkFilesUploaded();
+  }
+
+  onConfigFileSelected(event): void {
+    this.configFile = event.target.files[0];
+    this.checkFilesUploaded();
+  }
+
+  checkFilesUploaded(): void {
+    this.filesUploaded = this.inputFile !== undefined && this.configFile !== undefined;
+  }
+
+  onSubmit(): void {
+    if (!this.filesUploaded) {
+      console.error('Please upload both files.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('inputFile', this.inputFile);
+    formData.append('configFile', this.configFile);
+
+    this.http.post('/upload', formData)
+      .subscribe(response => {
+        console.log('Files uploaded successfully', response);
+        this.showSnackbar('Files uploaded successfully');
+        // Enable the "Generate" button
+        this.filesUploaded = true;
+      }, error => {
+        console.error('Upload failed', error);
+        this.showSnackbar('Upload failed: ' + error.message);
+      });
+  }
+
+  onGenerate(): void {
+    // Logic to call /generate
+  }
+
+  private showSnackbar(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 3000 // Duration in milliseconds
+    });
+  }
+}
