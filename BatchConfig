@@ -1,0 +1,97 @@
+package com.example.batch;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
+import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
+import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.batch.item.file.transform.LineTokenizer;
+import org.springframework.batch.item.support.builder.CompositeItemProcessorBuilder;
+import org.springframework.batch.item.support.builder.CompositeItemWriterBuilder;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.jdbc.core.JdbcTemplate;
+import javax.sql.DataSource;
+
+@Configuration
+@EnableBatchProcessing
+public class BatchConfig {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Bean
+    public FlatFileItemReader<MyObject> reader() {
+        return new FlatFileItemReaderBuilder<MyObject>()
+                .name("myObjectItemReader")
+                .resource(new ClassPathResource("data.csv"))
+                .linesToSkip(1)
+                .lineTokenizer(tokenizer())
+                .fieldSetMapper(new BeanWrapperFieldSetMapper<MyObject>() {{
+                    setTargetType(MyObject.class);
+                }})
+                .build();
+    }
+
+    @Bean
+    public DelimitedLineTokenizer tokenizer() {
+        DelimitedLineTokenizer tokenizer = new DelimitedLineTokenizer();
+        tokenizer.setNames(new String[]{"id", "name", "email", "department"});
+        return tokenizer;
+    }
+
+    @Bean
+    public ItemProcessor<MyObject, MyObject> processor() {
+        return new MyObjectItemProcessor();
+    }
+
+    @Bean
+    public JdbcBatchItemWriter<MyObject> writer() {
+        return new JdbcBatchItemWriterBuilder<MyObject>()
+                .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
+                .sql("INSERT INTO employee (id, name, email, department) VALUES (:id, :name, :email, :department)")
+                .dataSource(dataSource)
+                .build();
+    }
+
+    @Bean
+    public Job importUserJob(JobCompletionNotificationListener listener, Step step1) {
+        return jobBuilderFactory.get("importUserJob")
+            .incrementer(new RunIdIncrementer())
+            .listener(listener)
+            .flow(step1)
+            .end()
+            .build();
+    }
+
+    @Bean
+    public Step step1(JdbcBatchItemWriter<MyObject> writer) {
+        return stepBuilderFactory.get("step1")
+            .<MyObject, MyObject>chunk(10)
+            .reader(reader())
+            .processor(processor())
+            .writer(writer)
+            .build();
+    }
+
+    @Bean
+    public JobLauncher jobLauncher(JobRepository jobRepository) throws Exception {
+        SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
+        jobLauncher.setJobRepository(jobRepository);
+        jobLauncher.afterPropertiesSet();
+        return jobLauncher;
+    }
+}
