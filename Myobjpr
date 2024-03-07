@@ -1,0 +1,21 @@
+package com.example.batch;
+
+import org.springframework.batch.item.ItemProcessor;
+
+public class MyObjectItemProcessor implements ItemProcessor<MyObject, MyObject> {
+    @Override
+    public MyObject process(MyObject item) throws Exception {
+        // Sample business logic: Validate email address
+        if (!isValidEmail(item.getEmail())) {
+            // Mark invalid email addresses as null
+            item.setEmail(null);
+        }
+        return item;
+    }
+    
+    private boolean isValidEmail(String email) {
+        // Implement email validation logic here
+        // For simplicity, let's assume any non-null email is valid
+        return email != null;
+    }
+}
