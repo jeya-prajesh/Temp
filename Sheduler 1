@@ -1,0 +1,70 @@
+package com.example.batch;
+
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+
+@Component
+public class BatchScheduler {
+
+    @Autowired
+    private JobLauncher jobLauncher;
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Scheduled(cron = "0 0 * * * *") // Run every hour
+    public void runBatch() {
+        try {
+            Job importUserJob = jobBuilderFactory.get("importUserJob")
+                .start(step1())
+                .build();
+            jobLauncher.run(importUserJob, new JobParameters());
+        } catch (Exception e) {
+            // Handle exceptions
+        }
+    }
+
+    private Step step1() {
+        return stepBuilderFactory.get("step1")
+            .<MyObject, MyObject>chunk(10)
+            .reader(reader())
+            .processor(processor())
+            .writer(writer())
+            .build();
+    }
+
+    private FlatFileItemReader<MyObject> reader() {
+        return new FlatFileItemReaderBuilder<MyObject>()
+            .name("myObjectItemReader")
+            .resource(new ClassPathResource("data.csv"))
+            .linesToSkip(1)
+            .lineTokenizer(tokenizer())
+            .fieldSetMapper(new BeanWrapperFieldSetMapper<MyObject>() {{
+                setTargetType(MyObject.class);
+            }})
+            .build();
+    }
+
+    private DelimitedLineTokenizer tokenizer() {
+        DelimitedLineTokenizer tokenizer = new DelimitedLineTokenizer();
+        tokenizer.setNames(new String[]{"id", "name", "email", "department"});
+        return tokenizer;
+    }
+
+    private ItemProcessor<MyObject, MyObject> processor() {
+        return new MyObjectItemProcessor();
+    }
+
+    private JdbcBatchItemWriter<MyObject> writer() {
+        return new JdbcBatchItemWriterBuilder<MyObject>()
+            .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
+            .sql("INSERT INTO employee (id, name, email, department) VALUES (:id, :name, :email, :department)")
+            .dataSource(dataSource)
+            .build();
+    }
+}
