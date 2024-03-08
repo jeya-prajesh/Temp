@@ -1,0 +1,28 @@
+package com.example.batch;
+
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+
+@Component
+public class BatchScheduler {
+
+    @Autowired
+    private JobLauncher jobLauncher;
+
+    @Autowired
+    private Job importUserJob; // Assuming this is your batch job bean
+
+    @Scheduled(cron = "0 0 * * * *") // Run every hour
+    public void runBatch() {
+        try {
+            jobLauncher.run(importUserJob, new JobParameters());
+        } catch (Exception e) {
+            // Handle exceptions
+        }
+    }
+
+    public void startBatch() {
+        runBatch(); // Immediately trigger the batch process
+    }
+}
